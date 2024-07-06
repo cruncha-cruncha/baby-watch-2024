@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useUser } from "./firestore";
+import { useUser } from "./safeFirestore";
 import { Names } from "./Names";
 import { Predictions } from "./Predictions";
 

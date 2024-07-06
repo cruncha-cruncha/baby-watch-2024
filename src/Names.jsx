@@ -6,7 +6,7 @@ import {
   setDoc,
   addDoc,
 } from "firebase/firestore";
-import { db, useUser } from "./firestore";
+import { db, useUser } from "./safeFirestore";
 
 export const normalizeName = (name, boy, girl) => {
   return (

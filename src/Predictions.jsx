@@ -6,7 +6,7 @@ import {
   setDoc,
   addDoc,
 } from "firebase/firestore";
-import { db, useUser } from "./firestore";
+import { db, useUser } from "./safeFirestore";
 import { getTimeStamp } from "./Names";
 
 const usePredictions = () => {
@@ -115,7 +115,7 @@ const Guess = ({ sex, weight, deliveryDate, eyeColour, email }) => {
         "m-4 mt-0 rounded-md p-2" +
         (sex == "boy" ? " bg-blue-300" : "") +
         (sex == "girl" ? " bg-pink-300" : "") +
-        (sex == "other" ? " bg-blue-300" : "")
+        (sex == "other" ? " bg-purple-300" : "")
       }
     >
       <div className="flex">
