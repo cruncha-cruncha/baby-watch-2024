@@ -15,7 +15,6 @@ import {
 import { db, useUser } from "./safeFirestore";
 import { getTimeStamp } from "./getTimestamp";
 import { usePrevious } from "./usePrevious";
-import { calculateBoundingBoxes } from "./calculateBoundingBoxes";
 
 export const normalizeName = (name, boy, girl) => {
   return (
@@ -260,6 +259,19 @@ export const Names = ({ goToPredictions }) => {
       </div>
     </div>
   );
+};
+
+const calculateBoundingBoxes = (children) => {
+  const boundingBoxes = {};
+
+  React.Children.forEach(children, (child) => {
+    const domNode = child.ref.current;
+    const nodeBoundingBox = domNode?.getBoundingClientRect();
+
+    boundingBoxes[child.key] = nodeBoundingBox;
+  });
+
+  return boundingBoxes;
 };
 
 // https://medium.com/ft-product-technology/animating-list-reordering-with-react-hooks-1aa0d78a24dc
