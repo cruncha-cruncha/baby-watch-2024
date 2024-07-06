@@ -10,9 +10,12 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="m-4 flex">
+      <div className="m-4 flex items-center">
         <h1 className="grow">BABY WATCH 2024</h1>
-        <button className="bg-green-400" onClick={login}>
+        <button
+          className="border-md rounded-md bg-green-400 p-2 hover:bg-green-500 hover:text-white"
+          onClick={login}
+        >
           Login
         </button>
       </div>
