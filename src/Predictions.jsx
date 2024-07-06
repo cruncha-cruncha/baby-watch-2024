@@ -71,7 +71,7 @@ export const Predictions = ({ goToNames }) => {
   const [view, setView] = useState("all");
 
   return (
-    <div className="flex h-full max-h-full flex-col">
+    <div className="flex h-dvh max-h-dvh flex-col">
       <div className="m-4 mb-3 flex">
         <h1 className="cursor-pointer pr-2 text-5xl" onClick={goToNames}>
           {"<"}

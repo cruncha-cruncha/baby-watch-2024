@@ -23,7 +23,7 @@ function App() {
   }
 
   return (
-    <div className="h-full max-h-full">
+    <div className="h-dvh max-h-dvh">
       {screen === "names" && (
         <Names goToPredictions={() => setScreen("predictions")} />
       )}

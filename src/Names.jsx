@@ -154,7 +154,7 @@ export const Names = ({ goToPredictions }) => {
   };
 
   return (
-    <div className="flex h-full max-h-full flex-col">
+    <div className="flex h-dvh max-h-dvh flex-col">
       {showSexModal && (
         <SexModal
           addName={(isBoy, isGirl) => {
@@ -370,7 +370,7 @@ const SexModal = ({ addName }) => {
   const boyRef = useRef(null);
 
   return (
-    <div className="fixed left-0 top-0 z-50 flex h-full w-full items-center justify-center bg-white bg-opacity-50">
+    <div className="fixed left-0 top-0 z-50 flex h-dvh w-full items-center justify-center bg-white bg-opacity-50">
       <div className="flex w-full max-w-64 flex-col rounded-md bg-white p-4 shadow-lg">
         <div
           className={
