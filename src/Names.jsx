@@ -268,11 +268,11 @@ const AnimateNameChanges = ({ children }) => {
   const [prevBoundingBox, setPrevBoundingBox] = useState({});
   const [currentBoundingBox, setCurrentBoundingBox] = useState({});
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setPrevBoundingBox(calculateBoundingBoxes(prevChildren));
   }, [prevChildren]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setCurrentBoundingBox(calculateBoundingBoxes(children));
   }, [children]);
 
@@ -286,7 +286,9 @@ const AnimateNameChanges = ({ children }) => {
       const isHidden = domNode.classList.contains("absolute");
       const wasHidden = domNode.style.opacity === "0";
 
-      if (isHidden) {
+      if (isHidden && wasHidden) {
+        return;
+      } else if (isHidden) {
         requestAnimationFrame(() => {
           domNode.style.opacity = "100%";
           changeInY && (domNode.style.transform = `translateY(${changeInY}px)`);
