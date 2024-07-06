@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  createRef,
+} from "react";
 import {
   onSnapshot,
   collection,
@@ -7,6 +13,9 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { db, useUser } from "./safeFirestore";
+import { getTimeStamp } from "./getTimestamp";
+import { usePrevious } from "./usePrevious";
+import { calculateBoundingBoxes } from "./calculateBoundingBoxes";
 
 export const normalizeName = (name, boy, girl) => {
   return (
@@ -14,13 +23,6 @@ export const normalizeName = (name, boy, girl) => {
     "-" +
     (boy ? "b" : "") +
     (girl ? "g" : "")
-  );
-};
-
-export const getTimeStamp = () => {
-  const now = new Date();
-  return Math.floor(
-    (now.getTime() + now.getTimezoneOffset() * 60 * 1000) / 1000,
   );
 };
 
@@ -51,7 +53,11 @@ const useNames = () => {
     if (sortOrder.key === "alpha") {
       fn = (a, b) => a.name.localeCompare(b.name);
     } else if (sortOrder.key === "likes") {
-      fn = (a, b) => b.likes - a.likes;
+      fn = (a, b) => {
+        const out = b.likes - a.likes;
+        if (out === 0) return a.name.localeCompare(b.name);
+        return out;
+      };
     }
 
     if (sortOrder.reverse) {
@@ -62,18 +68,13 @@ const useNames = () => {
   })();
 
   const namesWithLikes = names
-    .filter((name) => {
-      if (showGirls && showBoys) return true;
-      if (showGirls) return name.girl;
-      if (showBoys) return name.boy;
-      return false;
-    })
     .map((name) => ({
       ...name,
       likes:
         likesByName[
           normalizeName(name.name, name.boy || false, name.girl || false)
         ] || 0,
+      display: (name.girl && showGirls) || (name.boy && showBoys),
     }))
     .sort(sortFn);
 
@@ -218,13 +219,17 @@ export const Names = ({ goToPredictions }) => {
       </div>
       <div className="relative grow overflow-y-auto">
         <div className="absolute w-full">
-          {namesWithLikes.map((data) => (
-            <Name
-              key={data.name}
-              likeName={() => likeName(data.name, data.boy, data.girl)}
-              {...data}
-            />
-          ))}
+          <AnimateNameChanges>
+            {namesWithLikes.map((data) => (
+              <Name
+                key={data.name}
+                ref={createRef()}
+                className={data.display ? "relative" : "absolute"}
+                likeName={() => likeName(data.name, data.boy, data.girl)}
+                {...data}
+              />
+            ))}
+          </AnimateNameChanges>
         </div>
       </div>
       <div className="relative mx-4 mb-2 mt-1 flex">
@@ -257,24 +262,106 @@ export const Names = ({ goToPredictions }) => {
   );
 };
 
-const Name = ({ name, likes, likeName }) => {
-  return (
-    <div className="m-4 mt-0 flex items-center rounded-md border-2 border-stone-200">
-      <div className="shrink-0 basis-16 px-4">
-        <p>{likes}</p>
-      </div>
-      <div className="grow py-2 text-center">
-        <h3 className="text-xl">{name}</h3>
-      </div>
-      <div
-        className="shrink-0 basis-16 cursor-pointer px-4 text-right"
-        onClick={likeName}
-      >
-        <p>+1</p>
-      </div>
-    </div>
-  );
+// https://medium.com/ft-product-technology/animating-list-reordering-with-react-hooks-1aa0d78a24dc
+const AnimateNameChanges = ({ children }) => {
+  const prevChildren = usePrevious(children);
+  const [prevBoundingBox, setPrevBoundingBox] = useState({});
+  const [currentBoundingBox, setCurrentBoundingBox] = useState({});
+
+  useEffect(() => {
+    setPrevBoundingBox(calculateBoundingBoxes(prevChildren));
+  }, [prevChildren]);
+
+  useEffect(() => {
+    setCurrentBoundingBox(calculateBoundingBoxes(children));
+  }, [children]);
+
+  useLayoutEffect(() => {
+    React.Children.forEach(children, (child) => {
+      const domNode = child.ref.current;
+      const prevBox = prevBoundingBox[child.key];
+      const currentBox = currentBoundingBox[child.key];
+      const changeInY = (prevBox?.top || 0) - currentBox?.top;
+
+      const isHidden = domNode.classList.contains("absolute");
+      const wasHidden = domNode.style.opacity === "0";
+
+      if (isHidden) {
+        requestAnimationFrame(() => {
+          domNode.style.opacity = "100%";
+          changeInY && (domNode.style.transform = `translateY(${changeInY}px)`);
+          domNode.style.transition = "transform 0s, opacity 0s";
+          requestAnimationFrame(() => {
+            domNode.style.opacity = "0%";
+            changeInY && (domNode.style.transform = "");
+            domNode.style.transition = "transform 500ms, opacity 300ms";
+          });
+        });
+      } else if (wasHidden) {
+        requestAnimationFrame(() => {
+          domNode.style.opacity = "0%";
+          changeInY && (domNode.style.transform = `translateY(${changeInY}px)`);
+          domNode.style.transition = "transform 0s, opacity 0s";
+          requestAnimationFrame(() => {
+            domNode.style.opacity = "100%";
+            changeInY && (domNode.style.transform = "");
+            domNode.style.transition = "transform 500ms, opacity 300ms";
+          });
+        });
+      } else if (changeInY) {
+        requestAnimationFrame(() => {
+          // Before the DOM paints, invert child to old position
+          domNode.style.transform = `translateY(${changeInY}px)`;
+          domNode.style.transition = "transform 0s, opacity 0s";
+          requestAnimationFrame(() => {
+            // After the previous frame, remove
+            // the transition to play the animation
+            domNode.style.transform = "";
+            domNode.style.transition = `transform ${460 + Math.floor(Math.random() * 80)}ms, opacity 300ms`;
+          });
+        });
+      }
+    });
+  }, [prevBoundingBox, currentBoundingBox, children]);
+
+  return children;
 };
+
+const Name = React.forwardRef(
+  ({ className, name, boy, girl, likes, likeName }, ref) => {
+    const [bgColor, hint] = (() => {
+      if (boy && girl) return ["bg-purple-300", "(b/g)"];
+      if (boy) return ["bg-blue-300", "(b)"];
+      if (girl) return ["bg-pink-300", "(g)"];
+    })();
+
+    return (
+      <div
+        ref={ref}
+        className={
+          "left-0 right-0 mx-4 mb-3 flex items-center rounded-md" +
+          ` ${bgColor}` +
+          ` ${className}`
+        }
+      >
+        <div className="shrink-0 basis-16 px-4">
+          <p>{likes}</p>
+        </div>
+        <div className="grow py-3 text-center">
+          <h3 className="text-xl">{name}</h3>
+        </div>
+        <div
+          className="shrink-0 basis-24 cursor-pointer px-4 text-right"
+          onClick={likeName}
+        >
+          <p>
+            <span className="text-sm">{hint}</span> +1
+          </p>
+        </div>
+      </div>
+    );
+  },
+);
 
 const SexModal = ({ addName }) => {
   const [isGirl, setIsGirl] = useState(false);

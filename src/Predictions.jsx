@@ -1,4 +1,10 @@
-import { useState, useEffect, useReducer, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useReducer,
+  useLayoutEffect,
+  createRef,
+} from "react";
 import {
   onSnapshot,
   collection,
@@ -7,7 +13,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { db, useUser } from "./safeFirestore";
-import { getTimeStamp } from "./Names";
+import { getTimeStamp } from "./getTimestamp";
 
 const usePredictions = () => {
   const { user } = useUser();
@@ -28,7 +34,11 @@ const usePredictions = () => {
     const unsubPredictions = onSnapshot(
       collection(db, "predictions"),
       (snapshot) => {
-        setPredictions(snapshot.docs.map((doc) => doc.data()));
+        setPredictions(
+          snapshot.docs
+            .map((doc) => doc.data())
+            .sort((a, b) => a.email.localeCompare(b.email)),
+        );
       },
     );
 
@@ -95,9 +105,15 @@ export const Predictions = ({ goToNames }) => {
       <div className="relative grow overflow-y-auto">
         {view == "all" && (
           <div className="absolute w-full">
-            {predictions.map((prediction) => (
-              <Guess key={prediction.email} {...prediction} />
-            ))}
+            <AnimatePredictionChanges>
+              {predictions.map((prediction) => (
+                <Guess
+                  key={prediction.email}
+                  ref={createRef()}
+                  {...prediction}
+                />
+              ))}
+            </AnimatePredictionChanges>
           </div>
         )}
         {view == "mine" && (
@@ -108,36 +124,57 @@ export const Predictions = ({ goToNames }) => {
   );
 };
 
-const Guess = ({ sex, weight, deliveryDate, eyeColour, email }) => {
-  return (
-    <div
-      className={
-        "m-4 mt-0 rounded-md p-2" +
-        (sex == "boy" ? " bg-blue-300" : "") +
-        (sex == "girl" ? " bg-pink-300" : "") +
-        (sex == "other" ? " bg-purple-300" : "")
-      }
-    >
-      <div className="flex">
-        <div className="shrink-0 grow-0 basis-1/6">
-          {sex.substring(0, 1).toUpperCase() + sex.substring(1)}
+const Guess = React.forwardRef(
+  ({ sex, weight, deliveryDate, eyeColour, email }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={
+          "mx-4 mb-3 rounded-lg p-2 border-4" +
+          (sex == "boy" ? " border-blue-300" : "") +
+          (sex == "girl" ? " border-pink-300" : "") +
+          (sex == "other" ? " border-purple-300" : "")
+        }
+      >
+        <div className="flex">
+          <div className="shrink-0 grow-0 basis-1/6">
+            {sex.substring(0, 1).toUpperCase() + sex.substring(1)}
+          </div>
+          <div className="shrink-0 grow basis-auto">
+            {weight.lbs} lb{weight.lbs > 1 ? "s" : ""}{" "}
+            {weight.oz > 0 ? `${weight.oz} oz` : ""}
+          </div>
+          <div className="shrink-0 grow-0 basis-2/6 text-right">
+            {deliveryDate}
+          </div>
         </div>
-        <div className="shrink-0 grow basis-auto">
-          {weight.lbs} lb{weight.lbs > 1 ? "s" : ""}{" "}
-          {weight.oz > 0 ? `${weight.oz} oz` : ""}
-        </div>
-        <div className="shrink-0 grow-0 basis-2/6 text-right">
-          {deliveryDate}
+        <div className="fiex-wrap flex">
+          <div className="shrink-0 basis-auto">{eyeColour} eyes</div>
+          <div className="shrink-0 grow basis-auto self-end text-right text-sm text-stone-500">
+            {email}
+          </div>
         </div>
       </div>
-      <div className="fiex-wrap flex">
-        <div className="shrink-0 basis-auto">{eyeColour} eyes</div>
-        <div className="shrink-0 grow basis-auto self-end text-right text-sm text-stone-500">
-          {email}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  },
+);
+
+const AnimatePredictionChanges = ({ children }) => {
+  useLayoutEffect(() => {
+    React.Children.forEach(children, (child, i) => {
+      const domNode = child.ref.current;
+      requestAnimationFrame(() => {
+        domNode.style.transform = "rotateY(180deg)";
+        domNode.style.transition = "transform 0s 0s";
+        requestAnimationFrame(() => {
+          domNode.style.transform = "";
+          domNode.style.transition = `transform 400ms ${i * 50}ms`;
+        });
+      });
+    });
+  }, [children]);
+
+  return children;
 };
 
 const myGuessReducer = (state, action) => {
